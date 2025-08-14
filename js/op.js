@@ -11,35 +11,41 @@
 
 /**
  * Busca uma OP na planilha de programação carregada.
- * Esta função agora é chamada automaticamente quando o usuário digita no campo de busca.
+ * VERSÃO CORRIGIDA E FINAL para ser robusta e funcional.
  */
 function searchOP() {
     const opNumber = document.getElementById('opSearch').value.trim();
 
-    // MELHORIA: Se o campo de busca estiver vazio, esconde os cards de resultado
-    // para não poluir a tela, mas não limpa a OP que já está selecionada.
     if (!opNumber) {
+        // Se o campo de busca está vazio, esconde os cards para limpar a tela.
         document.getElementById('opInfoCard').classList.add('hidden');
         document.getElementById('productionCard').classList.add('hidden');
         document.getElementById('palletsCard').classList.add('hidden');
         return;
     }
 
-    const found = excelData.find(item => item.op.toString() === opNumber);
+    // A busca robusta que corrige problemas de formatação do Excel.
+    const found = excelData.find(item => String(item.op).trim() === opNumber);
 
     if (found) {
-        // Evita recarregar tudo se a mesma OP já estiver na tela.
-        if (currentOP && currentOP.op === found.op) {
-            return;
-        }
+        // Se encontrou a OP, define como a OP atual.
         currentOP = found;
+        
+        // CORREÇÃO CRÍTICA: A chamada para `loadOPData` foi movida para DENTRO
+        // do bloco `if (found)`. Isso garante que os dados de produção (pallets)
+        // sejam carregados ANTES de tentar exibir as informações. Este era o erro.
+        loadOPData(opNumber); // Função de pallet.js que carrega os pallets salvos.
+        
+        // Agora, com os dados carregados, exibe as informações na tela.
         displayOPInfo(found);
-        loadOPData(opNumber); // Função de pallet.js
+        
         document.getElementById('opInfoCard').classList.remove('hidden');
         document.getElementById('productionCard').classList.remove('hidden');
         document.getElementById('palletsCard').classList.remove('hidden');
     } else {
-        // Se não encontrar, esconde os cards.
+        // Se não encontrou, limpa tudo para evitar inconsistências.
+        currentOP = null;
+        pallets = []; // Limpa a lista de pallets em memória.
         document.getElementById('opInfoCard').classList.add('hidden');
         document.getElementById('productionCard').classList.add('hidden');
         document.getElementById('palletsCard').classList.add('hidden');
@@ -48,21 +54,21 @@ function searchOP() {
 
 /**
  * Exibe as informações detalhadas da OP selecionada.
- * Lógica original mantida.
- * @param {object} op - O objeto da Ordem de Produção.
  */
 function displayOPInfo(op) {
     if (!op || !op.op) return;
 
     const opInfo = document.getElementById('opInfo');
+    
+    // Busca os dados de produção para a OP atual. É crucial que loadOPData já tenha sido chamado.
     const opData = productionData[op.op] || {};
     const status = opData.closed ? 'Fechada' : 'Aberta';
     const statusClass = status === 'Fechada' ? 'status-closed' : 'status-open';
 
     const isStretch = op.descricao.toUpperCase().includes('STRETCH');
     const guiaItem = isStretch
-        ? guiaStretchDatabase.find(item => item.codigo === op.codigoProduto)
-        : guiaDatabase.find(item => item.codigo === op.codigoProduto);
+        ? guiaStretchDatabase.find(item => String(item.codigo).trim() === String(op.codigoProduto).trim())
+        : guiaDatabase.find(item => String(item.codigo).trim() === String(op.codigoProduto).trim());
     const cor = guiaItem ? guiaItem.cor : 'N/A';
 
     opInfo.innerHTML = `
@@ -81,7 +87,6 @@ function displayOPInfo(op) {
 
 /**
  * Limpa a OP atual e reseta a interface para uma nova busca.
- * Lógica original mantida.
  */
 function clearCurrentOP() {
     currentOP = null;
@@ -102,7 +107,6 @@ function clearCurrentOP() {
 
 /**
  * Exibe uma tabela com todas as OPs que possuem dados de produção salvos.
- * Lógica original mantida.
  */
 function showAllOPs() {
     const allOPsCard = document.getElementById('allOPsCard');
@@ -160,8 +164,6 @@ function showAllOPs() {
 
 /**
  * Seleciona uma OP a partir da lista de "Todas as OPs".
- * Lógica original mantida.
- * @param {string} opNumber - O número da OP a ser selecionada.
  */
 function selectOP(opNumber) {
     if (!opNumber) {
@@ -176,8 +178,6 @@ function selectOP(opNumber) {
 
 /**
  * Exclui todos os dados de produção de uma OP específica.
- * Lógica original mantida.
- * @param {string} opNumber - O número da OP a ser excluída.
  */
 function deleteOP(opNumber) {
     if (!opNumber) {
@@ -191,7 +191,6 @@ function deleteOP(opNumber) {
         showAllOPs();
         showAlert(`OP ${opNumber} excluída com sucesso!`, 'success');
         
-        // Se a OP excluída era a que estava na tela, limpa a tela.
         if (currentOP && currentOP.op === opNumber) {
             clearCurrentOP();
         }

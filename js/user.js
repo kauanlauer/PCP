@@ -12,7 +12,6 @@
 
 /**
  * Verifica se um usuário já está logado ao carregar a página.
- * Se sim, esconde o card de login e mostra os de importação e busca.
  */
 function checkUserLogin() {
     if (currentUser) {
@@ -24,63 +23,68 @@ function checkUserLogin() {
 
 /**
  * Realiza o login do usuário (apontador).
+ * VERSÃO CORRIGIDA E MAIS ROBUSTA.
  */
 function loginUser() {
     const matricula = document.getElementById('userMatricula').value.trim();
-    const nome = document.getElementById('userName').value.trim();
+    // O campo nome é apenas para feedback visual, não precisamos mais ler o valor dele para o login.
 
-    // Validação dos campos
+    // Validação da matrícula continua a mesma.
     if (!matricula || matricula.length < 4 || !/^\d+$/.test(matricula)) {
         showAlert('Por favor, digite uma matrícula válida com pelo menos 4 dígitos.', 'danger');
         return;
     }
 
+    // Busca o operador no banco de dados de operadores.
     const operator = operators.find(op => op.matricula === matricula);
+    
     if (!operator) {
+        // Se a matrícula digitada não for encontrada, exibe o erro correto.
         showAlert('Matrícula não cadastrada. Por favor, cadastre o apontador primeiro.', 'danger');
         return;
     }
 
-    if (nome !== operator.nome) {
-        showAlert('Nome não corresponde à matrícula informada.', 'danger');
-        return;
-    }
-
-    // Define o usuário atual e salva no localStorage
+    // CORREÇÃO: A verificação do nome foi removida.
+    // Se a matrícula foi encontrada, o login é considerado bem-sucedido.
+    // O nome correto é pego diretamente do objeto 'operator' que encontramos.
     currentUser = {
-        matricula: matricula,
-        nome: nome,
+        matricula: operator.matricula,
+        nome: operator.nome, // Usamos o nome correto que está salvo.
         loginTime: new Date().toISOString()
     };
+    
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-    // Atualiza a interface
+    // Libera a interface principal do sistema.
     document.getElementById('loginCard').classList.add('hidden');
     document.getElementById('fileCard').classList.remove('hidden');
     document.getElementById('searchCard').classList.remove('hidden');
 
-    showAlert(`Bem-vindo, ${nome}!`, 'success');
+    showAlert(`Bem-vindo, ${operator.nome}!`, 'success');
 }
+
 
 /**
  * Permite trocar o apontador logado, reiniciando o processo de login.
  */
 function changeOperator() {
     if (confirm('Deseja realmente alterar o apontador de OP?')) {
-        // Limpa os dados da sessão atual
         localStorage.removeItem('currentUser');
         currentUser = null;
 
-        // Reseta a interface para o estado inicial
         document.getElementById('loginCard').classList.remove('hidden');
         document.getElementById('fileCard').classList.add('hidden');
         document.getElementById('searchCard').classList.add('hidden');
         document.getElementById('opInfoCard').classList.add('hidden');
         document.getElementById('productionCard').classList.add('hidden');
         document.getElementById('palletsCard').classList.add('hidden');
-        document.getElementById('laudoCard').classList.add('hidden');
+        
+        // Limpa o modal do laudo se ele estiver aberto
+        if (laudoModal && laudoModal._isShown) {
+            laudoModal.hide();
+        }
+        clearLaudo();
 
-        // Limpa os campos de login
         document.getElementById('userMatricula').value = '';
         document.getElementById('userName').value = '';
         document.getElementById('userMatricula').focus();
@@ -94,27 +98,12 @@ function changeOperator() {
 // ---------------------------------------------------------------------------------
 
 /**
- * Verifica a senha para acessar o modal de gerenciamento de apontadores.
- */
-function verifyOperatorsPassword() {
-    const password = document.getElementById('operatorsPassword').value.trim();
-
-    if (password === 'Manu123') {
-        closeOperatorsPasswordModal();
-        openOperatorsModal();
-    } else {
-        showAlert('Senha incorreta!', 'danger');
-    }
-}
-
-/**
  * Adiciona um novo apontador à lista.
  */
 function addOperator() {
     const matricula = document.getElementById('newMatricula').value.trim();
     const nome = document.getElementById('newName').value.trim();
 
-    // Validações
     if (!matricula || matricula.length < 4 || !/^\d+$/.test(matricula)) {
         showAlert('Por favor, digite uma matrícula válida com pelo menos 4 dígitos.', 'danger');
         return;
@@ -128,11 +117,9 @@ function addOperator() {
         return;
     }
 
-    // Adiciona o novo operador e salva no localStorage
     operators.push({ matricula, nome });
     localStorage.setItem('operators', JSON.stringify(operators));
 
-    // Limpa os campos do formulário
     document.getElementById('newMatricula').value = '';
     document.getElementById('newName').value = '';
 
@@ -150,23 +137,5 @@ function removeOperator(index) {
         localStorage.setItem('operators', JSON.stringify(operators));
         updateOperatorsList();
         showAlert('Apontador removido com sucesso!', 'success');
-    }
-}
-
-// ---------------------------------------------------------------------------------
-// Funções de Verificação de Senha para Ações Críticas
-// ---------------------------------------------------------------------------------
-
-/**
- * Verifica a senha para permitir a limpeza de todos os dados da aplicação.
- */
-function verifyClearDataPassword() {
-    const password = document.getElementById('clearDataPassword').value.trim();
-
-    if (password === 'Manu123') {
-        closeClearDataPasswordModal();
-        clearAllData(); // Esta função estará no arquivo data.js
-    } else {
-        showAlert('Senha incorreta!', 'danger');
     }
 }

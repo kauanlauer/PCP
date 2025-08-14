@@ -9,19 +9,19 @@
 // ---------------------------------------------------------------------------------
 // Variáveis Globais
 // ---------------------------------------------------------------------------------
-let excelData = [];             // Armazena os dados da planilha de programação.
-let guiaDatabase = [];          // Armazena os dados da planilha GUIA (Fita).
-let guiaStretchDatabase = [];   // Armazena os dados da planilha GUIA (Stretch).
-let currentOP = null;           // Guarda os dados da Ordem de Produção atualmente selecionada.
-let currentLaudoData = null;    // Guarda os dados do Laudo de Inspeção atualmente em edição.
-let productionData = {};        // Objeto que armazena todos os apontamentos de produção, salvos por OP.
-let pallets = [];               // Array que armazena os pallets da OP atual.
-let currentUser = null;         // Guarda os dados do usuário (apontador) logado.
-let operators = [];             // Array com todos os operadores (apontadores) cadastrados.
-let currentWorkbook = null;     // Armazena o objeto da planilha Excel carregada para futuras manipulações.
-let exportDataForNetwork = null;// Buffer de dados para exportação para a rede.
-let laudosSalvos = {};          // Objeto que armazena todos os laudos salvos, por OP ou código.
-let searchTimeout = null;       // Variável para controlar o tempo da busca automática da OP.
+let excelData = [];
+let guiaDatabase = [];
+let guiaStretchDatabase = [];
+let currentOP = null;
+let currentLaudoData = null;
+let productionData = {};
+let pallets = [];
+let currentUser = null;
+let operators = [];
+let currentWorkbook = null;
+let exportDataForNetwork = null;
+let laudosSalvos = {};
+let searchTimeout = null;
 
 
 // ---------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ function setupEventListeners() {
     guiaStretchInput.addEventListener('change', handleGuiaStretchSelect);
 
     // --- Eventos do Formulário de Produção ---
-    const weightInputs = ['pesoBruto', 'pesoTubo', 'pesoPalet', 'pesoEmbalagem'];
+    const weightInputs = ['pesoBruto', 'pesoTubo', 'pesoPallet', 'pesoEmbalagem'];
     weightInputs.forEach(id => {
         document.getElementById(id).addEventListener('input', calculatePesoLiquido);
     });
@@ -86,11 +86,10 @@ function setupEventListeners() {
     // --- Eventos de Busca (Automática e por Enter) ---
     const opSearchInput = document.getElementById('opSearch');
     opSearchInput.addEventListener('keyup', function(e) {
-        clearTimeout(searchTimeout); // Cancela a busca anterior se o usuário continuar digitando.
+        clearTimeout(searchTimeout);
         if (e.key === 'Enter') {
-            searchOP(); // Busca imediata se o usuário pressionar Enter.
+            searchOP();
         } else {
-            // Inicia um temporizador para buscar 500ms após o usuário parar de digitar.
             searchTimeout = setTimeout(() => {
                 searchOP();
             }, 500);
@@ -104,4 +103,31 @@ function setupEventListeners() {
     document.getElementById('laudoCodigoSearch').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') searchLaudoByCodigo();
     });
+}
+
+// ---------------------------------------------------------------------------------
+// NOVA FUNÇÃO: Abrir Leitor de QR Code com Dados
+// ---------------------------------------------------------------------------------
+
+/**
+ * Prepara os dados do banco de dados de QR Codes e abre a página do leitor
+ * em uma nova aba, passando os dados pela URL.
+ */
+function openQRCodeReader() {
+    // Pega o banco de dados de QR Codes do localStorage.
+    const qrDbString = localStorage.getItem('qrCodeDatabase');
+
+    if (!qrDbString || qrDbString === '{}') {
+        showAlert('Nenhum QR Code foi gerado ainda. Adicione um pallet primeiro.', 'danger');
+        return;
+    }
+
+    // Codifica os dados para serem seguros para a URL.
+    // 1. JSON.stringify: Transforma o objeto em texto.
+    // 2. btoa: Codifica o texto em Base64 para evitar problemas com caracteres especiais na URL.
+    const encodedData = btoa(qrDbString);
+
+    // Cria a URL final e abre em uma nova aba.
+    const readerUrl = `leitor.html?data=${encodedData}`;
+    window.open(readerUrl, '_blank');
 }

@@ -1,122 +1,197 @@
 // =================================================================================
-// SETOR: LEITOR DE QR CODE
+// SETOR: LEITOR DE QR CODE E ARMAZENAGEM DE ESTOQUE
 // =================================================================================
-// DESCRIÇÃO: Este script controla a página leitor.html. Ele ativa a câmera,
-// escaneia continuamente por QR Codes e, ao encontrar um, busca seus dados
-// no banco de dados local (localStorage) e os exibe na tela.
+// DESCRIÇÃO: Este script controla a página leitor.html. Ele recebe o banco de
+// dados de pallets pela URL, ativa a câmera, escaneia QR Codes, e permite
+// salvar a localização do pallet em um banco de dados de estoque local.
 // =================================================================================
 
 // ---------------------------------------------------------------------------------
-// Elementos da DOM (Interface)
+// Elementos da DOM e Variáveis Globais
 // ---------------------------------------------------------------------------------
 const video = document.getElementById("video");
 const loadingMessage = document.getElementById("loadingMessage");
-const scanResult = document.getElementById("scan-result");
 const palletDetailsContainer = document.getElementById("palletDetails");
 const palletInfoDiv = document.getElementById("palletInfo");
+const stockListDiv = document.getElementById("stockList");
+const stockStreetInput = document.getElementById("stockStreet");
+const stockPositionInput = document.getElementById("stockPosition");
+
+let qrCodeDatabase = {}; // Banco de dados recebido da página principal.
+let stockDatabase = {}; // Banco de dados do estoque, salvo neste dispositivo.
+let currentlyScannedPallet = null; // Guarda os dados do último pallet lido.
 
 // ---------------------------------------------------------------------------------
-// Lógica Principal do Leitor
+// Lógica de Inicialização da Página
 // ---------------------------------------------------------------------------------
 
-// 1. Carrega o banco de dados de QR Codes do localStorage.
-const qrCodeDatabase = JSON.parse(localStorage.getItem('qrCodeDatabase')) || {};
+// Função executada assim que a página carrega.
+window.onload = () => {
+    // 1. Tenta pegar os dados da URL.
+    const urlParams = new URLSearchParams(window.location.search);
+    const encodedData = urlParams.get('data');
 
-// 2. Solicita acesso à câmera do usuário.
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(function(stream) {
-        // Se o usuário permitir, a câmera é ativada.
-        loadingMessage.classList.add('d-none'); // Esconde a mensagem de "carregando".
-        video.srcObject = stream;
-        video.setAttribute("playsinline", true); // Necessário para iOS.
-        video.play();
-        // Inicia a função que vai escanear o vídeo.
-        requestAnimationFrame(tick);
-    })
-    .catch(function(err) {
-        // Se o usuário negar ou ocorrer um erro.
-        console.error("Erro ao acessar a câmera: ", err);
-        loadingMessage.textContent = "Erro ao acessar a câmera. Verifique as permissões.";
-        loadingMessage.classList.remove('alert-info');
-        loadingMessage.classList.add('alert-danger');
-    });
+    if (encodedData) {
+        try {
+            // Decodifica os dados (Base64 -> Texto JSON) e os carrega.
+            const decodedData = atob(encodedData);
+            qrCodeDatabase = JSON.parse(decodedData);
+            console.log("Banco de dados de QR Codes carregado com sucesso.");
+        } catch (e) {
+            console.error("Erro ao decodificar os dados da URL:", e);
+            loadingMessage.textContent = "Erro: Dados inválidos recebidos da página principal.";
+            return;
+        }
+    } else {
+        loadingMessage.textContent = "Erro: Nenhum dado de pallet foi recebido. Abra o leitor a partir da página principal.";
+        return;
+    }
+
+    // 2. Carrega o banco de dados de estoque salvo neste dispositivo.
+    stockDatabase = JSON.parse(localStorage.getItem('stockDatabase')) || {};
+    displayStockList();
+
+    // 3. Inicia a câmera.
+    startCamera();
+};
+
+/**
+ * Pede permissão e inicia a câmera do dispositivo.
+ */
+function startCamera() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(function(stream) {
+            loadingMessage.classList.add('d-none');
+            video.srcObject = stream;
+            video.play();
+            requestAnimationFrame(tick); // Inicia o escaneamento.
+        })
+        .catch(function(err) {
+            console.error("Erro ao acessar a câmera: ", err);
+            loadingMessage.textContent = "Erro ao acessar a câmera. Verifique as permissões no seu navegador.";
+            loadingMessage.classList.remove('alert-info');
+            loadingMessage.classList.add('alert-danger');
+        });
+}
+
+// ---------------------------------------------------------------------------------
+// Lógica de Leitura e Processamento do QR Code
+// ---------------------------------------------------------------------------------
 
 /**
  * Função executada continuamente para escanear cada quadro do vídeo.
  */
 function tick() {
-    // Verifica se o vídeo tem dados suficientes para serem analisados.
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        // Cria um canvas "invisível" para desenhar o quadro do vídeo e analisá-lo.
         const canvasElement = document.createElement('canvas');
         const canvas = canvasElement.getContext('2d');
         canvasElement.height = video.videoHeight;
         canvasElement.width = video.videoWidth;
         canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-        
-        // Extrai os dados da imagem do canvas.
         const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-        
-        // Tenta decodificar um QR Code a partir da imagem.
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-        });
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code) {
-            // Se um QR Code for encontrado...
             const palletId = code.data;
-            scanResult.textContent = `Código lido: ${palletId}`;
-            
-            // Busca o ID no nosso banco de dados.
+            // Busca o pallet no banco de dados que recebemos da URL.
             const palletData = qrCodeDatabase[palletId];
-            
-            if (palletData) {
-                // Se encontrar, exibe os detalhes.
+
+            if (palletData && (!currentlyScannedPallet || currentlyScannedPallet.palletData.id !== palletId)) {
+                 // Se encontrou um pallet NOVO, exibe os detalhes.
+                currentlyScannedPallet = palletData;
                 displayPalletDetails(palletData);
-            } else {
-                // Se não encontrar, informa o usuário.
-                displayPalletNotFound();
             }
         }
     }
-    // Continua o loop para o próximo quadro.
     requestAnimationFrame(tick);
 }
 
 // ---------------------------------------------------------------------------------
-// Funções de Exibição de Resultados
+// Lógica de Estoque
 // ---------------------------------------------------------------------------------
 
 /**
- * Exibe os detalhes completos do pallet encontrado.
- * @param {object} data - O objeto com os dados do pallet do banco de dados.
+ * Salva o pallet lido no banco de dados de estoque local.
  */
-function displayPalletDetails(data) {
-    const pallet = data.palletData;
-    palletInfoDiv.innerHTML = `
-        <p><strong>ID do Pallet:</strong> ${pallet.id}</p>
-        <p><strong>Ordem de Produção (OP):</strong> ${data.op}</p>
-        <p><strong>Código do Produto:</strong> ${data.codigoProduto}</p>
-        <p><strong>Descrição:</strong> ${data.descricaoProduto}</p>
-        <hr>
-        <p><strong>Sequenciamento:</strong> ${pallet.sequenciamento}</p>
-        <p><strong>Peso Líquido:</strong> ${pallet.pesoLiquido.toFixed(2)} kg</p>
-        <p><strong>Peso Bruto:</strong> ${pallet.pesoBruto.toFixed(2)} kg</p>
-        <p><strong>Data do Apontamento:</strong> ${pallet.timestamp}</p>
-        <p><strong>Apontador:</strong> ${pallet.operator}</p>
-    `;
-    palletDetailsContainer.classList.remove('d-none');
+function saveToStock() {
+    if (!currentlyScannedPallet) {
+        alert("Nenhum pallet foi lido para salvar.");
+        return;
+    }
+
+    const street = stockStreetInput.value.trim();
+    const position = stockPositionInput.value.trim();
+
+    if (!street || !position) {
+        alert("Por favor, preencha a Rua e a Posição no estoque.");
+        return;
+    }
+
+    // Adiciona as informações de estoque ao pallet.
+    const stockEntry = {
+        ...currentlyScannedPallet, // Copia todos os dados do pallet.
+        stockLocation: {
+            street: street,
+            position: position
+        },
+        storedAt: new Date().toLocaleString('pt-BR')
+    };
+
+    // Salva no banco de dados de estoque.
+    stockDatabase[currentlyScannedPallet.palletData.id] = stockEntry;
+    localStorage.setItem('stockDatabase', JSON.stringify(stockDatabase));
+
+    // Atualiza a lista na tela.
+    displayStockList();
+
+    // Limpa a tela para a próxima leitura.
+    palletDetailsContainer.classList.add('d-none');
+    currentlyScannedPallet = null;
+    stockStreetInput.value = '';
+    stockPositionInput.value = '';
+
+    alert(`Pallet ${stockEntry.palletData.sequenciamento} salvo na Rua ${street}, Posição ${position}!`);
 }
 
 /**
- * Exibe uma mensagem de erro quando o QR Code lido não corresponde a nenhum pallet.
+ * Exibe a lista de pallets já armazenados no estoque.
  */
-function displayPalletNotFound() {
+function displayStockList() {
+    const stockIds = Object.keys(stockDatabase);
+
+    if (stockIds.length === 0) {
+        stockListDiv.innerHTML = '<p class="text-muted text-center">Nenhum pallet armazenado ainda.</p>';
+        return;
+    }
+
+    let html = '<ul class="list-group">';
+    stockIds.forEach(id => {
+        const entry = stockDatabase[id];
+        html += `
+            <li class="list-group-item">
+                <strong>Pallet:</strong> ${entry.palletData.sequenciamento} (OP: ${entry.op})
+                <br>
+                <small><strong>Local:</strong> Rua ${entry.stockLocation.street}, Posição ${entry.stockLocation.position}</small>
+                <br>
+                <small class="text-muted">Armazenado em: ${entry.storedAt}</small>
+            </li>
+        `;
+    });
+    html += '</ul>';
+    stockListDiv.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------------
+// Funções de Exibição de Resultados da Leitura
+// ---------------------------------------------------------------------------------
+
+function displayPalletDetails(data) {
+    const pallet = data.palletData;
     palletInfoDiv.innerHTML = `
-        <div class="alert alert-danger">
-            <strong>Pallet não encontrado!</strong>
-            <p class="mb-0">O QR Code lido não corresponde a nenhum pallet registrado no banco de dados.</p>
-        </div>
+        <p><strong>OP:</strong> ${data.op}</p>
+        <p><strong>Produto:</strong> ${data.descricaoProduto}</p>
+        <p><strong>Sequenciamento:</strong> ${pallet.sequenciamento}</p>
+        <p><strong>Peso Líquido:</strong> ${pallet.pesoLiquido.toFixed(2)} kg</p>
     `;
     palletDetailsContainer.classList.remove('d-none');
 }

@@ -170,8 +170,8 @@
             <div class="card-body">
                 <h2 class="card-title h4"><i class="bi bi-gear me-2"></i>Gerenciamento e Ferramentas</h2>
                 <div class="d-flex flex-wrap gap-2">
-                    <!-- Botão para abrir o leitor de QR Code -->
-                    <a href="leitor.html" target="_blank" class="btn btn-success"><i class="bi bi-qr-code-scan me-2"></i>Abrir Leitor de QR Code</a>
+                    <!-- BOTÃO ATUALIZADO: Agora chama uma função JS -->
+                    <button class="btn btn-success" onclick="openQRCodeReader()"><i class="bi bi-qr-code-scan me-2"></i>Abrir Leitor de QR Code</button>
                     <button class="btn btn-outline-dark" onclick="showAllOPs()"><i class="bi bi-list-ul me-2"></i>Visualizar Todas as OPs</button>
                     <button class="btn btn-outline-danger" onclick="openClearDataModal()"><i class="bi bi-trash me-2"></i>Limpar Dados</button>
                 </div>
@@ -350,7 +350,7 @@
     <script src="js/op.js"></script>
     <script src="js/pallet.js"></script>
     <script src="js/laudo.js"></script>
-    <script src="js/qrcode.js"></script> <!-- NOVO SCRIPT ADICIONADO -->
+    <script src="js/qrcode.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

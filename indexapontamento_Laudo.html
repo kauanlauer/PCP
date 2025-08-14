@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Apontamento de Produção - Manupackaging</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Bibliotecas Externas (JS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+</head>
+<body>
+    <header class="header-main text-center p-4 mb-4">
+        <img src="https://fitaspersonalizadas.manupackaging.com.br/wp-content/uploads/2023/09/logo-manupackaging-w-1.svg" alt="ManuPackaging Logo" class="logo mb-3">
+        <h1 class="title">Sistema de Apontamento de Produção</h1>
+        <p class="subtitle">Controle e gestão de produção em tempo real</p>
+    </header>
+
+    <div class="container-xl">
+        <!-- Card de Login -->
+        <div class="card shadow-sm mb-4" id="loginCard">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-person-badge me-2"></i>Identificação do Apontador</h2>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="userMatricula" class="form-label">Matrícula</label>
+                        <input type="text" id="userMatricula" class="form-control" placeholder="Digite sua matrícula" minlength="4" pattern="\d{4,}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="userName" class="form-label">Nome Completo</label>
+                        <input type="text" id="userName" class="form-control" placeholder="Seu nome aparecerá aqui" readonly>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loginUser()"><i class="bi bi-box-arrow-in-right me-2"></i>Liberar Sistema</button>
+                <button class="btn btn-secondary" onclick="openOperatorsModalWithPassword()"><i class="bi bi-people me-2"></i>Gerenciar Apontadores</button>
+            </div>
+        </div>
+
+        <!-- Card de Importação de Arquivos -->
+        <div class="card shadow-sm mb-4 hidden" id="fileCard">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Planilhas</h2>
+                 <div class="row">
+                    <div class="col-lg-4 mb-3">
+                        <div class="import-card">
+                            <h3 class="import-card-title">Programação Diária</h3>
+                            <div class="import-file-upload" id="fileUpload">
+                                <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xlsb" class="d-none">
+                                <i class="bi bi-upload fs-1 text-primary"></i>
+                                <p>Clique ou arraste a planilha</p>
+                                <small class="text-muted">Aba: PROGRAMAÇÃO DIÁRIA</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                         <div class="import-card">
+                            <h3 class="import-card-title">GUIA (DATABASE)</h3>
+                            <div class="import-file-upload" id="guiaUpload">
+                                <input type="file" id="guiaInput" accept=".xlsx,.xlsm,.xlsb" class="d-none">
+                                <i class="bi bi-upload fs-1 text-primary"></i>
+                                <p>Clique ou arraste a planilha</p>
+                                <small class="text-muted">Aba: DATABASE</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <div class="import-card">
+                            <h3 class="import-card-title">GUIA (DATABASE_STRETCH)</h3>
+                            <div class="import-file-upload" id="guiaStretchUpload">
+                                <input type="file" id="guiaStretchInput" accept=".xlsx,.xlsm,.xlsb" class="d-none">
+                                <i class="bi bi-upload fs-1 text-primary"></i>
+                                <p>Clique ou arraste a planilha</p>
+                                <small class="text-muted">Aba: DATABASE_STRETCH</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Busca de OP -->
+        <div class="card shadow-sm mb-4 hidden" id="searchCard">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-search me-2"></i>Buscar Ordem de Produção</h2>
+                <input type="text" id="opSearch" class="form-control" placeholder="Digite o número da OP e pressione Enter para buscar">
+                <button class="btn btn-outline-secondary mt-3" onclick="changeOperator()"><i class="bi bi-arrow-repeat me-2"></i>Alterar Apontador</button>
+            </div>
+        </div>
+
+        <!-- Card de Informações da OP -->
+        <div class="card shadow-sm mb-4 hidden" id="opInfoCard">
+            <div class="card-body">
+                <div id="opInfo"></div>
+                <div class="mt-3">
+                    <button class="btn btn-outline-secondary" onclick="clearCurrentOP()"><i class="bi bi-eraser me-2"></i>Limpar e Nova Busca</button>
+                    <button class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#laudoModal" onclick="openLaudoFromOP()"><i class="bi bi-clipboard2-check me-2"></i>Abrir Laudo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Apontamento de Produção -->
+        <div class="card shadow-sm mb-4 hidden" id="productionCard">
+            <div class="card-body">
+                 <h2 class="card-title h4"><i class="bi bi-box-seam me-2"></i>Apontamento de Produção</h2>
+                 <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="sequenciamento" class="form-label">Sequenciamento do Pallet</label>
+                        <input type="text" id="sequenciamento" class="form-control" placeholder="Ex: 1/10">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="pesoBruto" class="form-label">Peso Bruto (kg)</label>
+                        <input type="number" id="pesoBruto" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="pesoTubo" class="form-label">Peso do Tubo (kg)</label>
+                        <input type="number" id="pesoTubo" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="pesoPalet" class="form-label">Peso do Palet (kg)</label>
+                        <input type="number" id="pesoPalet" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="pesoEmbalagem" class="form-label">Peso da Embalagem (kg)</label>
+                        <input type="number" id="pesoEmbalagem" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                     <div class="col-md-4 d-flex align-items-end mb-3">
+                        <div class="weight-calculation w-100">
+                            <h4 class="fs-6">Peso Líquido Calculado:</h4>
+                            <div class="weight-result" id="pesoLiquido">0.00 kg</div>
+                        </div>
+                    </div>
+                 </div>
+                 <div class="mt-2">
+                     <button class="btn btn-success" onclick="addPallet()"><i class="bi bi-plus-circle me-2"></i>Adicionar Pallet</button>
+                     <button class="btn btn-danger" onclick="closeOP()"><i class="bi bi-lock me-2"></i>Fechar OP</button>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Card de Pallets Registrados -->
+        <div class="card shadow-sm mb-4 hidden" id="palletsCard">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-stack me-2"></i>Pallets Registrados</h2>
+                <div id="palletsTable" class="table-responsive"></div>
+                <div id="totalSummary" class="summary-card hidden mt-3">
+                    <h3 class="h5">Resumo Total</h3>
+                    <div id="summaryContent" class="d-flex justify-content-center flex-wrap"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card de Gerenciamento de Dados -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-gear me-2"></i>Gerenciamento e Ferramentas</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <!-- Botão para abrir o leitor de QR Code -->
+                    <a href="leitor.html" target="_blank" class="btn btn-success"><i class="bi bi-qr-code-scan me-2"></i>Abrir Leitor de QR Code</a>
+                    <button class="btn btn-outline-dark" onclick="showAllOPs()"><i class="bi bi-list-ul me-2"></i>Visualizar Todas as OPs</button>
+                    <button class="btn btn-outline-danger" onclick="openClearDataModal()"><i class="bi bi-trash me-2"></i>Limpar Dados</button>
+                </div>
+                <hr>
+                <div class="row align-items-end">
+                    <div class="col-md-4 mb-3">
+                        <label for="exportType" class="form-label">Opção de Exportação</label>
+                        <select id="exportType" class="form-select">
+                            <option value="pdf">Relatório PDF da OP</option>
+                            <option value="laudo">Laudo de Inspeção PDF</option>
+                            <option value="excel">Planilha Resumida</option>
+                            <option value="excelDetailed">Planilha Detalhada</option>
+                            <option value="saveToNetwork">Salvar na Rede (Excel)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <button class="btn btn-dark" onclick="generateExport()"><i class="bi bi-download me-2"></i>Exportar Dados</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card de Todas as OPs -->
+        <div class="card shadow-sm mb-4 hidden" id="allOPsCard">
+            <div class="card-body">
+                <h2 class="card-title h4"><i class="bi bi-table me-2"></i>Tabela de Ordens de Produção</h2>
+                <div id="allOPsTable" class="table-responsive"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================================
+         MODAIS DA APLICAÇÃO
+         ================================================================================= -->
+
+    <!-- Modal de Laudo de Inspeção -->
+    <div class="modal fade" id="laudoModal" tabindex="-1" aria-labelledby="laudoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="laudoModalLabel"><i class="bi bi-clipboard2-data me-2"></i>Laudo de Inspeção Final</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="laudoOpSearch" class="form-label">Buscar por Número da OP</label>
+                            <input type="text" id="laudoOpSearch" class="form-control" placeholder="Digite a OP">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="laudoCodigoSearch" class="form-label">Buscar por Código do Produto</label>
+                            <input type="text" id="laudoCodigoSearch" class="form-control" placeholder="Digite o código">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mb-3" onclick="searchLaudoByOP()"><i class="bi bi-search me-2"></i>Buscar</button>
+                    
+                    <div id="laudoInfo" class="info-display hidden"></div>
+                
+                    <div class="card mt-3 hidden" id="laudoFormCard">
+                        <div class="card-body">
+                            <h3 class="card-title h5">Formulário de Inspeção</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>DESCRIÇÃO</th>
+                                            <th>UNIDADE</th>
+                                            <th>ESPECIFICADO</th>
+                                            <th>ENCONTRADO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="laudoFormBody"></tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="laudoObservacoes" class="form-label">Observações</label>
+                                <textarea id="laudoObservacoes" class="form-control" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                 <label class="form-label d-block">Resultado da Inspeção</label>
+                                 <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="resultadoInspecao" id="resAprovado" value="Aprovado">
+                                    <label class="form-check-label" for="resAprovado">Aprovado</label>
+                                 </div>
+                                 <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="resultadoInspecao" id="resReprovado" value="Reprovado">
+                                    <label class="form-check-label" for="resReprovado">Reprovado</label>
+                                 </div>
+                                 <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="resultadoInspecao" id="resRessalvas" value="Aprovado com Ressalvas">
+                                    <label class="form-check-label" for="resRessalvas">Aprovado com Ressalvas</label>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearLaudo()">Limpar</button>
+                    <button type="button" class="btn btn-success" onclick="saveLaudo()">Salvar Laudo</button>
+                    <button type="button" class="btn btn-info text-white" onclick="generateLaudoPDF()">Gerar PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Gerenciamento de Apontadores -->
+    <div class="modal fade" id="operatorsModal" tabindex="-1" aria-labelledby="operatorsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="operatorsModalLabel">Gerenciar Apontadores</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="newMatricula" class="form-label">Matrícula</label><input type="text" id="newMatricula" class="form-control" placeholder="Digite a matrícula" minlength="4" pattern="\d{4,}"></div>
+                        <div class="col-md-6 mb-3"><label for="newName" class="form-label">Nome Completo</label><input type="text" id="newName" class="form-control" placeholder="Digite o nome completo"></div>
+                    </div>
+                    <button class="btn btn-primary" onclick="addOperator()"><i class="bi bi-person-plus me-2"></i>Adicionar Apontador</button>
+                    <hr>
+                    <div id="operatorsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Senha -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="passwordModalLabel">Acesso Restrito</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="passwordModalMessage">Digite a senha para continuar:</p>
+                    <input type="password" id="passwordInput" class="form-control" placeholder="Senha">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="passwordSubmitBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de QR Code -->
+    <div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qrCodeModalLabel">QR Code do Pallet</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="qrCodeContainer" class="qr-container">
+                        <div id="qrCodeCanvas"></div>
+                        <p id="qrCodeInfo" class="mt-2" style="white-space: pre-line;"></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="printQRCode()"><i class="bi bi-printer me-2"></i>Imprimir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/user.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/import.js"></script>
+    <script src="js/op.js"></script>
+    <script src="js/pallet.js"></script>
+    <script src="js/laudo.js"></script>
+    <script src="js/qrcode.js"></script> <!-- NOVO SCRIPT ADICIONADO -->
+    <script src="js/main.js"></script>
+</body>
+</html>

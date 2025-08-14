@@ -1,0 +1,226 @@
+/* =================================================================================
+   STYLESHEET PROFISSIONAL PARA SISTEMA MANUPACKAGING
+   v3.0 - Foco em Animações, Cores e Layout Refinado
+   ================================================================================= */
+
+/* ---------------------------------------------------------------------------------
+   1. Variáveis Globais e Estilos Base
+   --------------------------------------------------------------------------------- */
+:root {
+    --primary-color: #00529B; /* Azul Manupackaging */
+    --primary-dark: #003A6D;
+    --secondary-color: #495057; /* Cinza escuro para texto */
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    --light-bg: #f1f5f9; /* Fundo geral mais suave */
+    --white-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+    --border-radius: 0.75rem; /* Borda padrão para cards e inputs */
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--light-bg);
+    color: var(--secondary-color);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Efeito de fade-in para os cards */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------------------------------------------------------------------------
+   2. Cabeçalho
+   --------------------------------------------------------------------------------- */
+.header-main {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: var(--white-bg);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--shadow-lg);
+}
+
+.header-main .logo {
+    max-height: 50px;
+    filter: brightness(0) invert(1);
+}
+
+.header-main .title {
+    font-weight: 600;
+}
+
+.header-main .subtitle {
+    font-weight: 300;
+    opacity: 0.8;
+}
+
+/* ---------------------------------------------------------------------------------
+   3. Cards e Formulários
+   --------------------------------------------------------------------------------- */
+.card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+.card-title {
+    color: var(--primary-dark);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+.form-control, .form-select {
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(0, 82, 155, 0.15);
+}
+
+/* ---------------------------------------------------------------------------------
+   4. Botões
+   --------------------------------------------------------------------------------- */
+.btn {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    transform: translateY(0);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ---------------------------------------------------------------------------------
+   5. Componentes Específicos
+   --------------------------------------------------------------------------------- */
+
+/* Cards de Importação */
+.import-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--white-bg);
+}
+
+.import-file-upload {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
+.import-file-upload:hover, .import-file-upload.dragover {
+    border-color: var(--primary-color);
+    background-color: #eef5fc;
+    transform: scale(1.02);
+}
+
+/* Display de Informações da OP */
+.info-display {
+    background-color: #eef5fc;
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--border-radius);
+}
+
+.info-item {
+    border-bottom: 1px solid #dbe8f5;
+}
+
+/* Tabela de Pallets */
+.table {
+    margin-bottom: 0;
+}
+.table thead {
+    background-color: var(--light-bg);
+}
+.table th {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+.table-hover > tbody > tr:hover {
+    --bs-table-hover-bg: #eef5fc;
+    box-shadow: var(--shadow-sm);
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+/* Resumo Total */
+.summary-item strong {
+    color: var(--primary-dark);
+}
+
+/* Status */
+.status-open, .status-closed {
+    border-radius: var(--border-radius);
+}
+
+/* Modals */
+.modal-content {
+    border-radius: var(--border-radius);
+    border: none;
+}
+.modal-header {
+    background-color: var(--light-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+.modal-title {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+/* Lista de Operadores no Modal */
+#operatorsList .list-group-item {
+    border-radius: var(--border-radius) !important;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+/* QR Code */
+.qr-container {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+/* ---------------------------------------------------------------------------------
+   6. Estilos de Impressão (Sem alterações)
+   --------------------------------------------------------------------------------- */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #qrCodeContainer, #qrCodeContainer * {
+        visibility: visible;
+    }
+    #qrCodeContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 60mm;
+        height: 60mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 5mm;
+        box-sizing: border-box;
+    }
+    #qrCodeCanvas, #qrCodeCanvas img {
+        width: 45mm !important;
+        height: 45mm !important;
+    }
+}

@@ -44,12 +44,6 @@
             height: auto;
             display: block;
         }
-        #scan-result {
-            background-color: #00000099;
-            color: white;
-            padding: 0.5rem;
-            text-align: center;
-        }
         .info-card {
             border-left: 5px solid var(--primary-color);
             background-color: #ffffff;
@@ -58,7 +52,7 @@
 </head>
 <body>
     <header class="header-main text-center p-3 mb-4">
-        <h1 class="h3">Leitor de QR Code de Pallets</h1>
+        <h1 class="h3">Leitor e Armazenagem de Pallets</h1>
     </header>
 
     <div class="container">
@@ -79,15 +73,36 @@
                             <video id="video" playsinline></video>
                         </div>
 
-                        <div id="scan-result" class="mt-3">
-                            Aguardando leitura...
-                        </div>
-
                         <div id="palletDetails" class="mt-4 text-start d-none">
-                            <h2 class="h4 text-primary border-bottom pb-2 mb-3">Detalhes do Pallet</h2>
+                            <h2 class="h4 text-primary border-bottom pb-2 mb-3">Detalhes do Pallet Lido</h2>
                             <div id="palletInfo" class="p-3 info-card">
                                 <!-- Os detalhes do pallet serão inseridos aqui -->
                             </div>
+
+                            <!-- CAMPOS DE ESTOQUE -->
+                            <div id="stock-form" class="mt-3">
+                                <h3 class="h5">Registrar Posição no Estoque</h3>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="stockStreet" class="form-label">Rua</label>
+                                        <input type="text" class="form-control" id="stockStreet" placeholder="Ex: A, B, C...">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="stockPosition" class="form-label">Posição</label>
+                                        <input type="text" class="form-control" id="stockPosition" placeholder="Ex: 1A, 2B, 3C...">
+                                    </div>
+                                </div>
+                                <button class="btn btn-success w-100" onclick="saveToStock()">
+                                    <i class="bi bi-box-arrow-in-down me-2"></i>Salvar no Estoque
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="stockListContainer" class="mt-4 text-start">
+                             <h2 class="h4 text-primary border-bottom pb-2 mb-3">Pallets Armazenados neste Dispositivo</h2>
+                             <div id="stockList">
+                                 <p class="text-muted text-center">Nenhum pallet armazenado ainda.</p>
+                             </div>
                         </div>
                     </div>
                 </div>

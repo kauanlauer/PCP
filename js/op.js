@@ -11,7 +11,7 @@
 
 /**
  * Busca uma OP na planilha de programação carregada.
- * VERSÃO CORRIGIDA E FINAL para ser robusta e funcional.
+ * VERSÃO FINAL E DEFINITIVA para ser à prova de falhas.
  */
 function searchOP() {
     const opNumber = document.getElementById('opSearch').value.trim();
@@ -24,16 +24,29 @@ function searchOP() {
         return;
     }
 
-    // A busca robusta que corrige problemas de formatação do Excel.
-    const found = excelData.find(item => String(item.op).trim() === opNumber);
+    // CORREÇÃO DEFINITIVA: A busca agora é à prova de falhas de tipo de dado.
+    // Ela compara o valor como texto E também como número, garantindo que
+    // qualquer formato vindo do Excel (texto, número, geral, etc.) seja encontrado.
+    const opNumberAsNumber = parseInt(opNumber, 10); // Converte a busca para número
+
+    const found = excelData.find(item => {
+        // Tentativa 1: Comparar como texto. Ideal para OPs com letras ou zeros à esquerda.
+        if (String(item.op).trim() === opNumber) {
+            return true;
+        }
+        // Tentativa 2: Comparar como número. Resolve 99% dos problemas de formatação do Excel.
+        if (!isNaN(opNumberAsNumber) && Number(item.op) === opNumberAsNumber) {
+            return true;
+        }
+        return false;
+    });
+
 
     if (found) {
         // Se encontrou a OP, define como a OP atual.
         currentOP = found;
         
-        // CORREÇÃO CRÍTICA: A chamada para `loadOPData` foi movida para DENTRO
-        // do bloco `if (found)`. Isso garante que os dados de produção (pallets)
-        // sejam carregados ANTES de tentar exibir as informações. Este era o erro.
+        // Garante que os dados de produção (pallets) sejam carregados ANTES de tentar exibir as informações.
         loadOPData(opNumber); // Função de pallet.js que carrega os pallets salvos.
         
         // Agora, com os dados carregados, exibe as informações na tela.

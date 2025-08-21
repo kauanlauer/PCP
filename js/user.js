@@ -1,9 +1,8 @@
 // =================================================================================
-// SETOR: GESTÃO DE USUÁRIO (APONTADOR)
+// SETOR: GESTÃO DE USUÁRIO (APONTADOR) (VERSÃO ROBUSTA)
 // =================================================================================
-// DESCRIÇÃO: Este arquivo contém toda a lógica relacionada ao gerenciamento
-// de usuários (apontadores), incluindo login, verificação de senha, cadastro,
-// remoção e troca de operador.
+// DESCRIÇÃO: Este arquivo agora inclui funções para mostrar e esconder as
+// informações do usuário no cabeçalho, tornando a sessão mais clara.
 // =================================================================================
 
 // ---------------------------------------------------------------------------------
@@ -11,85 +10,74 @@
 // ---------------------------------------------------------------------------------
 
 /**
- * Verifica se um usuário já está logado ao carregar a página.
+ * NOVO: Mostra as informações do usuário no cabeçalho.
+ * @param {object} user - O objeto do usuário logado.
  */
-function checkUserLogin() {
-    if (currentUser) {
-        document.getElementById('loginCard').classList.add('hidden');
-        document.getElementById('fileCard').classList.remove('hidden');
-        document.getElementById('searchCard').classList.remove('hidden');
+function displayUserInfo(user) {
+    const userInfoDiv = document.getElementById('userInfo');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    if (user && user.nome) {
+        userNameDisplay.textContent = user.nome;
+        userInfoDiv.style.display = 'block';
     }
+}
+
+/**
+ * NOVO: Esconde as informações do usuário do cabeçalho.
+ */
+function hideUserInfo() {
+    document.getElementById('userInfo').style.display = 'none';
 }
 
 /**
  * Realiza o login do usuário (apontador).
- * VERSÃO CORRIGIDA E MAIS ROBUSTA.
  */
 function loginUser() {
     const matricula = document.getElementById('userMatricula').value.trim();
-    // O campo nome é apenas para feedback visual, não precisamos mais ler o valor dele para o login.
+    const nome = document.getElementById('userName').value.trim();
 
-    // Validação da matrícula continua a mesma.
     if (!matricula || matricula.length < 4 || !/^\d+$/.test(matricula)) {
         showAlert('Por favor, digite uma matrícula válida com pelo menos 4 dígitos.', 'danger');
         return;
     }
-
-    // Busca o operador no banco de dados de operadores.
     const operator = operators.find(op => op.matricula === matricula);
-    
     if (!operator) {
-        // Se a matrícula digitada não for encontrada, exibe o erro correto.
         showAlert('Matrícula não cadastrada. Por favor, cadastre o apontador primeiro.', 'danger');
         return;
     }
+    if (nome !== operator.nome) {
+        showAlert('Nome não corresponde à matrícula informada.', 'danger');
+        return;
+    }
 
-    // CORREÇÃO: A verificação do nome foi removida.
-    // Se a matrícula foi encontrada, o login é considerado bem-sucedido.
-    // O nome correto é pego diretamente do objeto 'operator' que encontramos.
     currentUser = {
-        matricula: operator.matricula,
-        nome: operator.nome, // Usamos o nome correto que está salvo.
+        matricula: matricula,
+        nome: nome,
         loginTime: new Date().toISOString()
     };
-    
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-    // Libera a interface principal do sistema.
-    document.getElementById('loginCard').classList.add('hidden');
-    document.getElementById('fileCard').classList.remove('hidden');
-    document.getElementById('searchCard').classList.remove('hidden');
-
-    showAlert(`Bem-vindo, ${operator.nome}!`, 'success');
+    // A mágica acontece aqui: em vez de manipular os cards,
+    // apenas chamamos a função que reinicia a UI com o novo estado.
+    initializeUI();
 }
 
-
 /**
- * Permite trocar o apontador logado, reiniciando o processo de login.
+ * Permite trocar o apontador logado.
  */
 function changeOperator() {
-    if (confirm('Deseja realmente alterar o apontador de OP?')) {
+    if (confirm('Deseja realmente alterar o apontador? A OP atual será limpa da tela.')) {
         localStorage.removeItem('currentUser');
         currentUser = null;
-
-        document.getElementById('loginCard').classList.remove('hidden');
-        document.getElementById('fileCard').classList.add('hidden');
-        document.getElementById('searchCard').classList.add('hidden');
-        document.getElementById('opInfoCard').classList.add('hidden');
-        document.getElementById('productionCard').classList.add('hidden');
-        document.getElementById('palletsCard').classList.add('hidden');
         
-        // Limpa o modal do laudo se ele estiver aberto
-        if (laudoModal && laudoModal._isShown) {
-            laudoModal.hide();
-        }
-        clearLaudo();
+        // Limpa a OP da tela para evitar confusão
+        clearCurrentOP(); 
+        
+        // Esconde o nome do usuário do cabeçalho
+        hideUserInfo();
 
-        document.getElementById('userMatricula').value = '';
-        document.getElementById('userName').value = '';
-        document.getElementById('userMatricula').focus();
-
-        showAlert('Por favor, identifique o novo apontador de OP.', 'info');
+        // Reinicia a UI para mostrar a tela de login
+        initializeUI(); 
     }
 }
 
@@ -97,9 +85,6 @@ function changeOperator() {
 // Funções de Gerenciamento de Apontadores (CRUD)
 // ---------------------------------------------------------------------------------
 
-/**
- * Adiciona um novo apontador à lista.
- */
 function addOperator() {
     const matricula = document.getElementById('newMatricula').value.trim();
     const nome = document.getElementById('newName').value.trim();
@@ -127,10 +112,6 @@ function addOperator() {
     showAlert('Apontador adicionado com sucesso!', 'success');
 }
 
-/**
- * Remove um apontador da lista.
- * @param {number} index - O índice do apontador a ser removido no array 'operators'.
- */
 function removeOperator(index) {
     if (confirm('Tem certeza que deseja remover este apontador?')) {
         operators.splice(index, 1);

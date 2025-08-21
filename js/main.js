@@ -1,13 +1,14 @@
 // =================================================================================
-// SETOR: INICIALIZAÇÃO E ESTADO GLOBAL
+// SETOR: INICIALIZAÇÃO E ESTADO GLOBAL (VERSÃO ROBUSTA)
 // =================================================================================
-// DESCRIÇÃO: Este arquivo contém as variáveis globais que armazenam o estado
-// da aplicação e a lógica principal de inicialização que é executada quando
-// a página é carregada.
+// DESCRIÇÃO: Este arquivo foi reestruturado para ter uma lógica de inicialização
+// clara e sem falhas, garantindo que a sessão do usuário e os dados das
+// planilhas sejam corretamente carregados e a interface seja exibida de
+// forma consistente.
 // =================================================================================
 
 // ---------------------------------------------------------------------------------
-// Variáveis Globais
+// Variáveis Globais (sem alterações)
 // ---------------------------------------------------------------------------------
 let excelData = [];
 let guiaDatabase = [];
@@ -28,22 +29,59 @@ let searchTimeout = null;
 // Inicialização da Aplicação
 // ---------------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. Carrega TODOS os dados salvos (usuário, produção, planilhas)
     loadSavedData();
-    setupEventListeners();
-    checkUserLogin();
+    
+    // 2. Configura a interface com base nos dados carregados
+    initializeUI();
 
+    // 3. Configura todos os botões e campos interativos
+    setupEventListeners();
+});
+
+/**
+ * NOVO: Função central que decide o que mostrar na tela ao iniciar.
+ * Esta função é a chave para a correção do problema.
+ */
+function initializeUI() {
+    // Verifica se há um usuário logado
+    if (currentUser) {
+        // Se sim, esconde o login e mostra o nome do usuário no cabeçalho
+        document.getElementById('loginCard').classList.add('hidden');
+        displayUserInfo(currentUser); // Mostra "Bem-vindo, [Nome]!"
+
+        // Agora, verifica se as planilhas já foram carregadas na sessão
+        if (excelData.length > 0 && guiaDatabase.length > 0 && guiaStretchDatabase.length > 0) {
+            // Se sim, esconde o card de importação e mostra o de busca
+            document.getElementById('fileCard').classList.add('hidden');
+            document.getElementById('searchCard').classList.remove('hidden');
+            showAlert('Sessão restaurada com sucesso.', 'success');
+        } else {
+            // Se não, mostra o card de importação para o usuário carregar os arquivos
+            document.getElementById('fileCard').classList.remove('hidden');
+            document.getElementById('searchCard').classList.add('hidden');
+        }
+    } else {
+        // Se não há usuário logado, mostra apenas o card de login
+        document.getElementById('loginCard').classList.remove('hidden');
+        document.getElementById('fileCard').classList.add('hidden');
+        document.getElementById('searchCard').classList.add('hidden');
+    }
+}
+
+
+// ---------------------------------------------------------------------------------
+// Configuração dos Ouvintes de Eventos (Event Listeners)
+// ---------------------------------------------------------------------------------
+function setupEventListeners() {
+    // Listener para auto-preenchimento do nome do usuário
     document.getElementById('userMatricula').addEventListener('input', function() {
         this.value = this.value.replace(/\D/g, '');
         const matricula = this.value.trim();
         const operator = operators.find(op => op.matricula === matricula);
         document.getElementById('userName').value = operator ? operator.nome : '';
     });
-});
 
-// ---------------------------------------------------------------------------------
-// Configuração dos Ouvintes de Eventos (Event Listeners)
-// ---------------------------------------------------------------------------------
-function setupEventListeners() {
     // --- Eventos de Importação de Arquivos ---
     const fileUpload = document.getElementById('fileUpload');
     const fileInput = document.getElementById('fileInput');
@@ -68,7 +106,7 @@ function setupEventListeners() {
     guiaStretchInput.addEventListener('change', handleGuiaStretchSelect);
 
     // --- Eventos do Formulário de Produção ---
-    const weightInputs = ['pesoBruto', 'pesoTubo', 'pesoPallet', 'pesoEmbalagem'];
+    const weightInputs = ['pesoBruto', 'pesoTubo', 'pesoPalet', 'pesoEmbalagem'];
     weightInputs.forEach(id => {
         document.getElementById(id).addEventListener('input', calculatePesoLiquido);
     });
@@ -103,31 +141,4 @@ function setupEventListeners() {
     document.getElementById('laudoCodigoSearch').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') searchLaudoByCodigo();
     });
-}
-
-// ---------------------------------------------------------------------------------
-// NOVA FUNÇÃO: Abrir Leitor de QR Code com Dados
-// ---------------------------------------------------------------------------------
-
-/**
- * Prepara os dados do banco de dados de QR Codes e abre a página do leitor
- * em uma nova aba, passando os dados pela URL.
- */
-function openQRCodeReader() {
-    // Pega o banco de dados de QR Codes do localStorage.
-    const qrDbString = localStorage.getItem('qrCodeDatabase');
-
-    if (!qrDbString || qrDbString === '{}') {
-        showAlert('Nenhum QR Code foi gerado ainda. Adicione um pallet primeiro.', 'danger');
-        return;
-    }
-
-    // Codifica os dados para serem seguros para a URL.
-    // 1. JSON.stringify: Transforma o objeto em texto.
-    // 2. btoa: Codifica o texto em Base64 para evitar problemas com caracteres especiais na URL.
-    const encodedData = btoa(qrDbString);
-
-    // Cria a URL final e abre em uma nova aba.
-    const readerUrl = `leitor.html?data=${encodedData}`;
-    window.open(readerUrl, '_blank');
 }

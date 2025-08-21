@@ -1,82 +1,42 @@
 // =================================================================================
-// SETOR: LEITOR DE QR CODE E ARMAZENAGEM DE ESTOQUE
+// SETOR: LEITOR DE QR CODE (VERSÃO ATUALIZADA)
 // =================================================================================
-// DESCRIÇÃO: Este script controla a página leitor.html. Ele recebe o banco de
-// dados de pallets pela URL, ativa a câmera, escaneia QR Codes, e permite
-// salvar a localização do pallet em um banco de dados de estoque local.
+// DESCRIÇÃO: Este script foi atualizado para ler o novo formato de QR Code,
+// que contém todos os dados em uma única string de texto. Ele agora "parseia"
+// (interpreta) essa string para exibir os detalhes de forma organizada.
 // =================================================================================
 
 // ---------------------------------------------------------------------------------
-// Elementos da DOM e Variáveis Globais
+// Elementos da DOM (Interface)
 // ---------------------------------------------------------------------------------
 const video = document.getElementById("video");
 const loadingMessage = document.getElementById("loadingMessage");
+const scanResult = document.getElementById("scan-result");
 const palletDetailsContainer = document.getElementById("palletDetails");
 const palletInfoDiv = document.getElementById("palletInfo");
-const stockListDiv = document.getElementById("stockList");
-const stockStreetInput = document.getElementById("stockStreet");
-const stockPositionInput = document.getElementById("stockPosition");
-
-let qrCodeDatabase = {}; // Banco de dados recebido da página principal.
-let stockDatabase = {}; // Banco de dados do estoque, salvo neste dispositivo.
-let currentlyScannedPallet = null; // Guarda os dados do último pallet lido.
 
 // ---------------------------------------------------------------------------------
-// Lógica de Inicialização da Página
+// Lógica Principal do Leitor
 // ---------------------------------------------------------------------------------
 
-// Função executada assim que a página carrega.
-window.onload = () => {
-    // 1. Tenta pegar os dados da URL.
-    const urlParams = new URLSearchParams(window.location.search);
-    const encodedData = urlParams.get('data');
-
-    if (encodedData) {
-        try {
-            // Decodifica os dados (Base64 -> Texto JSON) e os carrega.
-            const decodedData = atob(encodedData);
-            qrCodeDatabase = JSON.parse(decodedData);
-            console.log("Banco de dados de QR Codes carregado com sucesso.");
-        } catch (e) {
-            console.error("Erro ao decodificar os dados da URL:", e);
-            loadingMessage.textContent = "Erro: Dados inválidos recebidos da página principal.";
-            return;
-        }
-    } else {
-        loadingMessage.textContent = "Erro: Nenhum dado de pallet foi recebido. Abra o leitor a partir da página principal.";
-        return;
-    }
-
-    // 2. Carrega o banco de dados de estoque salvo neste dispositivo.
-    stockDatabase = JSON.parse(localStorage.getItem('stockDatabase')) || {};
-    displayStockList();
-
-    // 3. Inicia a câmera.
-    startCamera();
-};
-
-/**
- * Pede permissão e inicia a câmera do dispositivo.
- */
-function startCamera() {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(function(stream) {
-            loadingMessage.classList.add('d-none');
-            video.srcObject = stream;
-            video.play();
-            requestAnimationFrame(tick); // Inicia o escaneamento.
-        })
-        .catch(function(err) {
-            console.error("Erro ao acessar a câmera: ", err);
-            loadingMessage.textContent = "Erro ao acessar a câmera. Verifique as permissões no seu navegador.";
-            loadingMessage.classList.remove('alert-info');
-            loadingMessage.classList.add('alert-danger');
-        });
-}
-
-// ---------------------------------------------------------------------------------
-// Lógica de Leitura e Processamento do QR Code
-// ---------------------------------------------------------------------------------
+// 1. Solicita acesso à câmera do usuário.
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(function(stream) {
+        // Se o usuário permitir, a câmera é ativada.
+        loadingMessage.classList.add('d-none');
+        video.srcObject = stream;
+        video.setAttribute("playsinline", true);
+        video.play();
+        // Inicia a função que vai escanear o vídeo.
+        requestAnimationFrame(tick);
+    })
+    .catch(function(err) {
+        // Se o usuário negar ou ocorrer um erro.
+        console.error("Erro ao acessar a câmera: ", err);
+        loadingMessage.textContent = "Erro ao acessar a câmera. Verifique as permissões.";
+        loadingMessage.classList.remove('alert-info');
+        loadingMessage.classList.add('alert-danger');
+    });
 
 /**
  * Função executada continuamente para escanear cada quadro do vídeo.
@@ -89,109 +49,93 @@ function tick() {
         canvasElement.width = video.videoWidth;
         canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
         const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        // Tenta decodificar um QR Code a partir da imagem.
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+        });
 
         if (code) {
-            const palletId = code.data;
-            // Busca o pallet no banco de dados que recebemos da URL.
-            const palletData = qrCodeDatabase[palletId];
-
-            if (palletData && (!currentlyScannedPallet || currentlyScannedPallet.palletData.id !== palletId)) {
-                 // Se encontrou um pallet NOVO, exibe os detalhes.
-                currentlyScannedPallet = palletData;
-                displayPalletDetails(palletData);
-            }
+            // Se um QR Code for encontrado...
+            scanResult.textContent = `QR Code lido com sucesso!`;
+            
+            // NOVO: Chama a função para interpretar o texto do QR Code.
+            parseAndDisplayQRData(code.data);
         }
     }
+    // Continua o loop para o próximo quadro.
     requestAnimationFrame(tick);
 }
 
 // ---------------------------------------------------------------------------------
-// Lógica de Estoque
+// Funções de Interpretação e Exibição de Resultados
 // ---------------------------------------------------------------------------------
 
 /**
- * Salva o pallet lido no banco de dados de estoque local.
+ * Interpreta a string de dados do QR Code e a exibe.
+ * @param {string} qrDataString - A string de texto lida do QR Code.
+ * Exemplo: "OP=54413;COD=123;SEQ=1/10;P_LIQ=452.00;..."
  */
-function saveToStock() {
-    if (!currentlyScannedPallet) {
-        alert("Nenhum pallet foi lido para salvar.");
-        return;
+function parseAndDisplayQRData(qrDataString) {
+    try {
+        // Cria um objeto para guardar os dados.
+        const palletData = {};
+        
+        // Quebra a string em pares "CHAVE=VALOR" usando o ponto e vírgula como separador.
+        const pairs = qrDataString.split(';');
+
+        // Itera sobre cada par.
+        pairs.forEach(pair => {
+            if (pair) { // Garante que não processe pares vazios
+                // Quebra o par em chave e valor usando o igual como separador.
+                const [key, value] = pair.split('=');
+                // Adiciona ao objeto. Ex: palletData['OP'] = '54413'
+                palletData[key] = value;
+            }
+        });
+
+        // Chama a função para mostrar os dados na tela.
+        displayPalletDetails(palletData);
+
+    } catch (error) {
+        // Se o QR Code tiver um formato inesperado, mostra um erro.
+        console.error("Erro ao interpretar o QR Code:", error);
+        displayPalletError("O formato do QR Code lido é inválido.");
     }
-
-    const street = stockStreetInput.value.trim();
-    const position = stockPositionInput.value.trim();
-
-    if (!street || !position) {
-        alert("Por favor, preencha a Rua e a Posição no estoque.");
-        return;
-    }
-
-    // Adiciona as informações de estoque ao pallet.
-    const stockEntry = {
-        ...currentlyScannedPallet, // Copia todos os dados do pallet.
-        stockLocation: {
-            street: street,
-            position: position
-        },
-        storedAt: new Date().toLocaleString('pt-BR')
-    };
-
-    // Salva no banco de dados de estoque.
-    stockDatabase[currentlyScannedPallet.palletData.id] = stockEntry;
-    localStorage.setItem('stockDatabase', JSON.stringify(stockDatabase));
-
-    // Atualiza a lista na tela.
-    displayStockList();
-
-    // Limpa a tela para a próxima leitura.
-    palletDetailsContainer.classList.add('d-none');
-    currentlyScannedPallet = null;
-    stockStreetInput.value = '';
-    stockPositionInput.value = '';
-
-    alert(`Pallet ${stockEntry.palletData.sequenciamento} salvo na Rua ${street}, Posição ${position}!`);
 }
 
 /**
- * Exibe a lista de pallets já armazenados no estoque.
+ * Exibe os detalhes completos do pallet na tela.
+ * @param {object} data - O objeto com os dados já interpretados do QR Code.
  */
-function displayStockList() {
-    const stockIds = Object.keys(stockDatabase);
-
-    if (stockIds.length === 0) {
-        stockListDiv.innerHTML = '<p class="text-muted text-center">Nenhum pallet armazenado ainda.</p>';
-        return;
-    }
-
-    let html = '<ul class="list-group">';
-    stockIds.forEach(id => {
-        const entry = stockDatabase[id];
-        html += `
-            <li class="list-group-item">
-                <strong>Pallet:</strong> ${entry.palletData.sequenciamento} (OP: ${entry.op})
-                <br>
-                <small><strong>Local:</strong> Rua ${entry.stockLocation.street}, Posição ${entry.stockLocation.position}</small>
-                <br>
-                <small class="text-muted">Armazenado em: ${entry.storedAt}</small>
-            </li>
-        `;
-    });
-    html += '</ul>';
-    stockListDiv.innerHTML = html;
-}
-
-// ---------------------------------------------------------------------------------
-// Funções de Exibição de Resultados da Leitura
-// ---------------------------------------------------------------------------------
-
 function displayPalletDetails(data) {
-    const pallet = data.palletData;
+    // Monta o HTML com os dados lidos.
     palletInfoDiv.innerHTML = `
-        <p><strong>OP:</strong> ${data.op}</p>
-        <p><strong>Produto:</strong> ${data.descricaoProduto}</p>
-        <p><strong>Sequenciamento:</strong> ${pallet.sequenciamento}</p>
-        <p><strong>Peso Líquido:</strong> ${pallet.pesoLiquido.toFixed(2)} kg</p>
+        <p><strong>Ordem de Produção (OP):</strong> ${data.OP || 'N/A'}</p>
+        <p><strong>Código do Produto:</strong> ${data.COD || 'N/A'}</p>
+        <p><strong>Sequenciamento:</strong> ${data.SEQ || 'N/A'}</p>
+        <hr>
+        <p><strong>Peso Líquido:</strong> ${data.P_LIQ ? data.P_LIQ + ' kg' : 'N/A'}</p>
+        <p><strong>Peso Bruto:</strong> ${data.P_BRUTO ? data.P_BRUTO + ' kg' : 'N/A'}</p>
+        <hr>
+        <p><strong>Data do Apontamento:</strong> ${data.DATA || 'N/A'}</p>
+        <p><strong>Apontador:</strong> ${data.OPERADOR || 'N/A'}</p>
+        <p><strong>Tipo de Cliente:</strong> ${data.TIPO || 'N/A'}</p>
+    `;
+    // Mostra o card de detalhes.
+    palletDetailsContainer.classList.remove('d-none');
+}
+
+/**
+ * Exibe uma mensagem de erro genérica.
+ * @param {string} message - A mensagem de erro a ser exibida.
+ */
+function displayPalletError(message) {
+    palletInfoDiv.innerHTML = `
+        <div class="alert alert-danger">
+            <strong>Erro na Leitura!</strong>
+            <p class="mb-0">${message}</p>
+        </div>
     `;
     palletDetailsContainer.classList.remove('d-none');
 }

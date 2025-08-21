@@ -2,8 +2,8 @@
 // SETOR: IMPORTAÇÃO DE PLANILHAS (ARQUIVOS EXCEL)
 // =================================================================================
 // DESCRIÇÃO: Este arquivo contém todas as funções relacionadas à importação e
-// processamento de arquivos Excel, incluindo a lógica para arrastar e soltar
-// (drag-and-drop) e a extração dos dados das planilhas.
+// processamento de arquivos Excel. AGORA, ele também salva os dados processados
+// no sessionStorage para persistir durante a sessão do navegador.
 // =================================================================================
 
 // ---------------------------------------------------------------------------------
@@ -49,7 +49,6 @@ function handleGuiaStretchSelect(e) {
  * @param {File} file - O arquivo Excel a ser processado.
  */
 function processFile(file) {
-    // MELHORIA: Substituímos o texto fixo na tela por uma notificação (toast) para um visual mais limpo.
     showAlert('Processando Planilha de Programação...', 'info');
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -63,13 +62,12 @@ function processFile(file) {
             const worksheet = currentWorkbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
-            // A lógica principal de processar os dados foi mantida 100% intacta.
             processExcelData(jsonData);
             
-            // MELHORIA: Usamos a notificação para avisar do sucesso.
-            showAlert(`Programação importada: ${excelData.length} registros.`, 'success');
+            // NOVO: Salva os dados da programação na memória da sessão.
+            sessionStorage.setItem('excelData', JSON.stringify(excelData));
             
-            // MELHORIA: Adicionamos a verificação para ocultar o card quando tudo for importado.
+            showAlert(`Programação importada: ${excelData.length} registros.`, 'success');
             checkAndHideImportCard();
         } catch (error) {
             showAlert(`Erro ao processar programação: ${error.message}`, 'danger');
@@ -94,8 +92,10 @@ function processGuiaFile(file) {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-            // A lógica principal de processar os dados foi mantida 100% intacta.
             processGuiaData(jsonData);
+
+            // NOVO: Salva os dados da GUIA Fita na memória da sessão.
+            sessionStorage.setItem('guiaDatabase', JSON.stringify(guiaDatabase));
 
             showAlert(`GUIA (Fita) importada: ${guiaDatabase.length} registros.`, 'success');
             checkAndHideImportCard();
@@ -122,8 +122,10 @@ function processGuiaStretchFile(file) {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-            // A lógica principal de processar os dados foi mantida 100% intacta.
             processGuiaStretchData(jsonData);
+
+            // NOVO: Salva os dados da GUIA Stretch na memória da sessão.
+            sessionStorage.setItem('guiaStretchDatabase', JSON.stringify(guiaStretchDatabase));
 
             showAlert(`GUIA (Stretch) importada: ${guiaStretchDatabase.length} registros.`, 'success');
             checkAndHideImportCard();
